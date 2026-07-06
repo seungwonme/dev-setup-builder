@@ -19,3 +19,5 @@ Then visit `http://localhost:8080`.
 ## Generated scripts
 
 The app only emits selected tools plus required dependencies. It does not write editor settings unless the generated script explicitly includes that selected step in the future.
+
+macOS downloads may not keep executable permissions. Run the generated file with `bash setup-mac.command`, or run `chmod +x setup-mac.command` before double-clicking it in Finder.
