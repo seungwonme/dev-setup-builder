@@ -10,7 +10,8 @@ import { Selector } from "@astryxdesign/core/Selector";
 import { Switch } from "@astryxdesign/core/Switch";
 import { TextArea } from "@astryxdesign/core/TextArea";
 import { TextInput } from "@astryxdesign/core/TextInput";
-import { FaCode, FaGitAlt, FaRobot, FaUserGear, FaWindows } from "react-icons/fa6";
+import { AiFillOpenAI } from "react-icons/ai";
+import { FaApple, FaCode, FaGitAlt, FaUserGear, FaWindows } from "react-icons/fa6";
 import {
   SiAnthropic,
   SiBun,
@@ -130,12 +131,12 @@ const PACKAGE_TEXT = {
   wsl2: { note: "Windows 전용 Linux 환경입니다. 관리자 권한과 재시작이 필요할 수 있습니다." },
   vscode: { note: "코드 편집기와 code 명령을 설치합니다." },
   "claude-desktop": { note: "Claude 데스크톱 앱입니다." },
-  "claude-code": { note: "Claude Code 명령줄 도구입니다. 공식 설치 방식을 우선 사용합니다." },
-  "claude-code-telemetry": { label: "Claude Code 관측 로그", note: "Claude Code 실행 로그 설정을 추가합니다. 프롬프트 본문은 기록하지 않습니다." },
+  "claude-code": { note: "Claude Code 명령줄 도구입니다. 공식 설치 순서를 우선 사용합니다." },
+  "claude-code-telemetry": { label: "Claude Code 관측 로그", note: "Claude Code 실행 로그 설정을 추가합니다." },
   "claude-extension": { label: "Claude Code VS Code 확장", note: "VS Code에서 Claude Code를 쓰기 위한 확장입니다." },
-  "codex-app": { note: "OpenAI Codex 데스크톱 앱입니다. macOS와 Windows 공식 앱을 설치합니다." },
-  codex: { note: "@openai/codex 명령줄 도구를 npm으로 설치합니다." },
-  "codex-telemetry": { label: "Codex 관측 로그", note: "Codex 실행 로그 설정을 추가합니다. 프롬프트 본문은 기록하지 않습니다." },
+  "codex-app": { note: "Codex 데스크톱 앱입니다." },
+  codex: { note: "Codex 명령줄 도구입니다. 공식 설치 순서를 우선 사용합니다." },
+  "codex-telemetry": { label: "Codex 관측 로그", note: "Codex 실행 로그 설정을 추가합니다." },
   vercel: { note: "Vercel 배포용 명령줄 도구를 설치합니다." },
   gh: { note: "GitHub 작업용 gh 명령을 설치합니다." },
   "github-auth": { label: "GitHub CLI 로그인", note: "GitHub CLI 로그인 상태를 확인하고 필요한 명령을 안내합니다." },
@@ -157,9 +158,9 @@ const PACKAGE_ICONS = {
   "claude-code": [SiClaudecode, "claude"],
   "claude-code-telemetry": [SiClaudecode, "claude"],
   "claude-extension": [SiAnthropic, "claude"],
-  "codex-app": [FaRobot, "openai"],
-  codex: [FaRobot, "openai"],
-  "codex-telemetry": [FaRobot, "openai"],
+  "codex-app": [AiFillOpenAI, "openai"],
+  codex: [AiFillOpenAI, "openai"],
+  "codex-telemetry": [AiFillOpenAI, "openai"],
   vercel: [SiVercel, "vercel"],
   gh: [SiGithub, "github"],
   "github-auth": [SiGithub, "github"],
@@ -602,8 +603,8 @@ function App() {
               <h2>운영체제</h2>
             </div>
             <SegmentedControl value={os} onChange={setTarget} label="설치할 운영체제" layout="fill">
-              <SegmentedControlItem value="mac" label="macOS" />
-              <SegmentedControlItem value="win" label="Windows" />
+              <SegmentedControlItem value="mac" label="macOS" icon={<FaApple />} />
+              <SegmentedControlItem value="win" label="Windows" icon={<FaWindows />} />
             </SegmentedControl>
           </div>
 

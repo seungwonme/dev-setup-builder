@@ -12,11 +12,25 @@ const settings = { gitName: "A", gitEmail: "a@example.com" };
 const codex = resolveSelection(new Set(["codex"]), "mac");
 const codexScript = buildMacScript(codex, settings);
 const nodeIndex = codexScript.indexOf('brew_formula "Node.js"');
-const codexIndex = codexScript.indexOf('npm_global "Codex CLI"');
+const codexCallIndex = codexScript.lastIndexOf("install_codex_cli");
+const codexNativeIndex = codexScript.indexOf("https://chatgpt.com/codex/install.sh");
+const codexBrewIndex = codexScript.indexOf("brew install --cask codex");
+const codexNpmIndex = codexScript.indexOf('npm_global "Codex CLI"');
 
 assert.equal(codex.has("node"), true);
 assert.equal(codex.has("homebrew"), true);
-assert.equal(nodeIndex >= 0 && nodeIndex < codexIndex, true);
+assert.equal(nodeIndex >= 0 && nodeIndex < codexCallIndex, true);
+assert.equal(codexNativeIndex >= 0 && codexNativeIndex < codexBrewIndex && codexBrewIndex < codexNpmIndex, true);
+
+const claudeCode = resolveSelection(new Set(["claude-code"]), "mac");
+const claudeCodeScript = buildMacScript(claudeCode, settings);
+const claudeNativeIndex = claudeCodeScript.indexOf("https://claude.ai/install.sh");
+const claudeBrewIndex = claudeCodeScript.indexOf("brew install --cask claude-code");
+const claudeNpmIndex = claudeCodeScript.indexOf('npm_global "Claude Code CLI"');
+
+assert.equal(claudeCode.has("node"), true);
+assert.equal(claudeCode.has("homebrew"), true);
+assert.equal(claudeNativeIndex >= 0 && claudeNativeIndex < claudeBrewIndex && claudeBrewIndex < claudeNpmIndex, true);
 
 const codexApp = resolveSelection(new Set(["codex-app"]), "mac");
 const codexAppScript = buildMacScript(codexApp, settings);
@@ -53,6 +67,7 @@ const claudeTelemetryScript = buildMacScript(claudeTelemetry, {
 assert.equal(claudeTelemetry.has("claude-code"), true);
 assert.match(claudeTelemetryScript, /CLAUDE_CODE_ENABLE_TELEMETRY=1/);
 assert.match(claudeTelemetryScript, /claude-code-telemetry\.sh/);
+assert.match(claudeTelemetryScript, /\$HOME\/\.zshrc/);
 assert.match(claudeTelemetryScript, /OTEL_EXPORTER_OTLP_ENDPOINT=%s/);
 assert.match(claudeTelemetryScript, /configure_claude_code_telemetry 'http:\/\/collector\.local:4317' 'grpc' '' '' 'dev' '' '60000' '5000' 'otlp' 'otlp' 'none' '1' '0' '1'/);
 

@@ -10,10 +10,22 @@ const settings = { gitName: "A", gitEmail: "a@example.com" };
 const codex = resolveSelection(new Set(["codex"]), "win");
 const codexScript = buildWindowsScript(codex, settings);
 const nodeIndex = codexScript.indexOf("Install-Winget -Label 'Node.js LTS'");
-const codexIndex = codexScript.indexOf("Install-NpmGlobal -Label 'Codex CLI'");
+const codexCallIndex = codexScript.lastIndexOf("Install-CodexCli");
+const codexNativeIndex = codexScript.indexOf("https://chatgpt.com/codex/install.ps1");
+const codexNpmIndex = codexScript.indexOf("Install-NpmGlobal -Label 'Codex CLI'");
 
 assert.equal(codex.has("node"), true);
-assert.equal(nodeIndex >= 0 && nodeIndex < codexIndex, true);
+assert.equal(nodeIndex >= 0 && nodeIndex < codexCallIndex, true);
+assert.equal(codexNativeIndex >= 0 && codexNativeIndex < codexNpmIndex, true);
+
+const claudeCode = resolveSelection(new Set(["claude-code"]), "win");
+const claudeCodeScript = buildWindowsScript(claudeCode, settings);
+const claudeNativeIndex = claudeCodeScript.indexOf("https://claude.ai/install.ps1");
+const claudeWingetIndex = claudeCodeScript.indexOf("winget install --id Anthropic.ClaudeCode");
+const claudeNpmIndex = claudeCodeScript.indexOf("Install-NpmGlobal -Label 'Claude Code CLI'");
+
+assert.equal(claudeCode.has("node"), true);
+assert.equal(claudeNativeIndex >= 0 && claudeNativeIndex < claudeWingetIndex && claudeWingetIndex < claudeNpmIndex, true);
 
 const codexApp = resolveSelection(new Set(["codex-app"]), "win");
 const codexAppScript = buildWindowsScript(codexApp, settings);
