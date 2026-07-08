@@ -81,9 +81,9 @@ const PACKAGES = [
     group: "Core",
     label: "Windows WSL2",
     note: "Windows-only Linux subsystem. May require administrator permission and restart.",
+    platforms: ["win"],
     presets: [],
     deps: { mac: [], win: [] },
-    mac: () => ['warn "WSL2 is Windows-only; skipped"'],
     win: () => ["Install-WSL2"]
   },
   {
@@ -215,6 +215,10 @@ function fileName(os) {
   return os === "mac" ? "setup-mac.command" : "setup-windows.bat";
 }
 
+function supportsOs(item, os) {
+  return !item.platforms || item.platforms.includes(os);
+}
+
 function getSettings() {
   return {
     gitName: document.getElementById("gitName").value || "Claude Code",
@@ -223,7 +227,10 @@ function getSettings() {
 }
 
 function resolveSelection(ids, os) {
-  const resolved = new Set(ids);
+  const resolved = new Set([...ids].filter((id) => {
+    const item = packageById.get(id);
+    return !item || supportsOs(item, os);
+  }));
   let changed = true;
   while (changed) {
     changed = false;
@@ -679,9 +686,10 @@ function buildScript() {
 
 function renderPackages() {
   const root = document.getElementById("packageList");
-  const groups = [...new Set(PACKAGES.map((item) => item.group))];
+  const packages = PACKAGES.filter((item) => supportsOs(item, state.os));
+  const groups = [...new Set(packages.map((item) => item.group))];
   root.innerHTML = groups.map((group) => {
-    const items = PACKAGES.filter((item) => item.group === group).map((item) => `
+    const items = packages.filter((item) => item.group === group).map((item) => `
       <label class="package">
         <input type="checkbox" data-package="${item.id}" ${state.selected.has(item.id) ? "checked" : ""}>
         <span>
@@ -719,7 +727,7 @@ function update() {
     `<span class="pill">${script.split(/\r?\n/).length} lines</span>`
   ].join("");
   document.getElementById("dependencyText").textContent = added.length ? `Auto-added: ${added.join(", ")}` : "";
-  document.getElementById("statusText").innerHTML = state.selected.size ? "Ready" : "<span class='warning'>No tools selected</span>";
+  document.getElementById("statusText").innerHTML = visibleResolved(resolved).length ? "Ready" : "<span class='warning'>No tools selected</span>";
   updatePermissionHelp();
   renderPackages();
 }
@@ -790,15 +798,17 @@ function selfTest() {
     macSetup.has("node"),
     macSetup.has("gh"),
     macSetup.has("homebrew"),
+    !macSetup.has("wsl2"),
     winSetup.has("node"),
     winSetup.has("gh"),
+    winSetup.has("wsl2"),
     macScript.includes("@openai/codex"),
     macScript.includes("anthropic.claude-code"),
     winScript.includes("@openai/codex"),
     winScript.includes("anthropic.claude-code"),
     macSetupScript.includes("install_pnpm"),
     macSetupScript.includes("check_github_auth"),
-    macSetupScript.includes("WSL2 is Windows-only"),
+    !macSetupScript.includes("WSL2"),
     winSetupScript.includes("Install-Pnpm"),
     winSetupScript.includes("Check-GitHubAuth"),
     winSetupScript.includes("Install-WSL2"),
