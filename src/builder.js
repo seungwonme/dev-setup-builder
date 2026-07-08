@@ -36,7 +36,7 @@ export const PACKAGES = [
     note: "Latest package-manager stable Python.",
     presets: ["minimal", "agent"],
     deps: { mac: ["homebrew"], win: [] },
-    mac: () => ['brew_formula "Python" "python" "python3"'],
+    mac: () => ["install_python"],
     win: () => [
       "$pythonOk = $false",
       "foreach ($candidate in @('Python.Python.3.14','Python.Python.3.13','Python.Python.3.12')) {",
@@ -267,7 +267,11 @@ function boolSetting(settings, key) {
 
 function setting(settings, key, fallback) {
   const value = settings?.[key];
-  return value === undefined || value === null || value === "" ? fallback : value;
+  if (value === undefined || value === null || value === "") {
+    return fallback;
+  }
+  // Strip CR/LF: illegal in TOML basic strings and a script-line breakout vector.
+  return typeof value === "string" ? value.replace(/[\r\n]/g, "") : value;
 }
 
 function telemetryArgs(settings, quote = sh) {
@@ -385,7 +389,8 @@ export function buildMacScript(resolved, settings) {
     '  info "Homebrew"',
     "  if has brew; then ok \"Homebrew installed\"; refresh_path; return 0; fi",
     "  # Official install docs: https://brew.sh/",
-    `  /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)" >> "$LOG" 2>&1 || { fail "Homebrew"; return 1; }`,
+    "  # NONINTERACTIVE=1 skips the RETURN prompt; output stays on the terminal so the sudo password prompt is visible.",
+    `  NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)" || { fail "Homebrew"; return 1; }`,
     "  refresh_path",
     '  if has brew; then ok "Homebrew installed"; else fail "Homebrew"; fi',
     "}",
@@ -399,6 +404,16 @@ export function buildMacScript(resolved, settings) {
     '  brew install "$formula" >> "$LOG" 2>&1',
     "  refresh_path",
     '  if has "$command_name"; then ok "$label installed"; else fail "$label"; fi',
+    "}",
+    "",
+    "install_python() {",
+    '  info "Python"',
+    "  # /usr/bin/python3 is an Apple CommandLineTools stub, so check for a real Homebrew Python instead of `has python3`.",
+    '  if [ -x /opt/homebrew/bin/python3 ] || [ -x /usr/local/bin/python3 ]; then ok "Python installed"; return 0; fi',
+    '  if ! has brew; then fail "Python (Homebrew missing)"; return 1; fi',
+    '  brew install python >> "$LOG" 2>&1',
+    "  refresh_path",
+    '  if [ -x /opt/homebrew/bin/python3 ] || [ -x /usr/local/bin/python3 ]; then ok "Python installed"; else fail "Python"; fi',
     "}",
     "",
     "app_exists() {",
@@ -534,6 +549,7 @@ export function buildMacScript(resolved, settings) {
     '    [ "$raw_mode" = "inline" ] && printf "%s\\n" "export OTEL_LOG_RAW_API_BODIES=1"',
     '    [ "$raw_mode" = "file" ] && [ -n "$raw_dir" ] && printf "export OTEL_LOG_RAW_API_BODIES=%s\\n" "$(shell_escape "file:$raw_dir")"',
     '  } > "$telemetry_file"',
+    '  chmod 600 "$telemetry_file"',
     '  append_once "$HOME/.zshrc" "# Dev Setup Builder - Claude Code telemetry" "source \\"$telemetry_file\\""',
     '  ok "Claude Code telemetry configured"',
     "}",
@@ -587,7 +603,7 @@ export function buildMacScript(resolved, settings) {
     '    printf "trace_exporter = %s\\n" "$(codex_exporter_toml "$trace_exporter" "$endpoint" "$protocol" "$header_name" "$header_value")"',
     '    printf "metrics_exporter = %s\\n" "$(codex_exporter_toml "$metrics_exporter" "$endpoint" "$protocol" "$header_name" "$header_value")"',
     '    printf "%s\\n" "$end"',
-    '  } >> "$config"',
+    '  } > "$config"',
     '  rm -f "$clean"',
     '  ok "Codex telemetry configured"',
     "}",
@@ -614,8 +630,8 @@ export function buildMacScript(resolved, settings) {
     '  existing_name="$(git config --global user.name 2>/dev/null || true)"',
     '  existing_email="$(git config --global user.email 2>/dev/null || true)"',
     '  if [ -n "$existing_name" ] && [ -n "$existing_email" ]; then ok "Git identity already set"; return 0; fi',
-    '  git config --global user.name "$name" >> "$LOG" 2>&1',
-    '  git config --global user.email "$email" >> "$LOG" 2>&1',
+    '  [ -z "$existing_name" ] && git config --global user.name "$name" >> "$LOG" 2>&1',
+    '  [ -z "$existing_email" ] && git config --global user.email "$email" >> "$LOG" 2>&1',
     '  ok "Git identity defaults set"',
     "}",
     "",
@@ -649,7 +665,7 @@ export function buildWindowsScript(resolved, settings) {
     "rem For SmartScreen: More info > Run anyway.",
     "setlocal",
     "set \"BAT_FILE=%~f0\"",
-    "powershell -NoProfile -ExecutionPolicy Bypass -Command \"$raw=[IO.File]::ReadAllText($env:BAT_FILE,[Text.UTF8Encoding]::new($false)); $m='#__PS_SCRIPT_BELOW__'; $i=$raw.LastIndexOf($m); if($i -lt 0){ Write-Host 'ERROR: PS marker not found'; exit 1 }; $ps=$raw.Substring($i+$m.Length); $sb=[scriptblock]::Create($ps); & $sb; exit $LASTEXITCODE\"",
+    "powershell -NoProfile -ExecutionPolicy Bypass -Command \"$raw=[IO.File]::ReadAllText($env:BAT_FILE,[Text.UTF8Encoding]::new($false)); $m='#__PS_SCRIPT'+'_BELOW__'; $i=$raw.IndexOf($m); if($i -lt 0){ Write-Host 'ERROR: PS marker not found'; exit 1 }; $ps=$raw.Substring($i+$m.Length); $sb=[scriptblock]::Create($ps); & $sb; exit $LASTEXITCODE\"",
     "set \"EC=%ERRORLEVEL%\"",
     "pause",
     "exit /b %EC%",
@@ -661,7 +677,7 @@ export function buildWindowsScript(resolved, settings) {
     "try { [Console]::OutputEncoding = [Text.UTF8Encoding]::new($false); $OutputEncoding = [Text.UTF8Encoding]::new($false) } catch {}",
     "$LogFile = Join-Path $env:TEMP (\"dev-setup-builder-{0}.log\" -f (Get-Date -Format 'yyyyMMdd-HHmmss'))",
     "[IO.File]::WriteAllText($LogFile, \"=== $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') ===`r`n\", [Text.UTF8Encoding]::new($false))",
-    "$Failed = @()",
+    "$script:Failed = @()",
     "",
     "function Ok([string]$Text) { Write-Host \"  OK: $Text\" }",
     "function Warn([string]$Text) { Write-Host \"  WARN: $Text\" }",
@@ -841,7 +857,9 @@ export function buildWindowsScript(resolved, settings) {
     "  Step 'Codex CLI'",
     "  if (Has-Command 'codex') { Ok 'Codex CLI installed'; return }",
     "  # Official install docs: https://developers.openai.com/codex/quickstart",
-    "  try { & powershell.exe -NoProfile -ExecutionPolicy Bypass -Command \"$env:CODEX_NON_INTERACTIVE=1; irm https://chatgpt.com/codex/install.ps1 | iex\" *>> $LogFile } catch { $_ | Out-String | Add-Content -Path $LogFile }",
+    "  # Set the env var in this scope (inherited by the child) so it is not interpolated away inside the child -Command string.",
+    "  $env:CODEX_NON_INTERACTIVE = '1'",
+    "  try { & powershell.exe -NoProfile -ExecutionPolicy Bypass -Command \"irm https://chatgpt.com/codex/install.ps1 | iex\" *>> $LogFile } catch { $_ | Out-String | Add-Content -Path $LogFile }",
     "  Refresh-Path",
     "  if (Has-Command 'codex') { Ok 'Codex CLI installed'; return }",
     "  if (Has-Command 'npm') { Install-NpmGlobal -Label 'Codex CLI' -Package '@openai/codex' -Command 'codex' } else { Fail 'Codex CLI' }",
@@ -985,8 +1003,8 @@ export function buildWindowsScript(resolved, settings) {
     "  $existingName = & git config --global user.name 2>$null",
     "  $existingEmail = & git config --global user.email 2>$null",
     "  if ($existingName -and $existingEmail) { Ok 'Git identity already set'; return }",
-    "  & git config --global user.name $Name *>> $LogFile",
-    "  & git config --global user.email $Email *>> $LogFile",
+    "  if (-not $existingName) { & git config --global user.name $Name *>> $LogFile }",
+    "  if (-not $existingEmail) { & git config --global user.email $Email *>> $LogFile }",
     "  Ok 'Git identity defaults set'",
     "}",
     "",
@@ -996,9 +1014,9 @@ export function buildWindowsScript(resolved, settings) {
     "",
     "Write-Host \"\"",
     "Write-Host \"Log: $LogFile\"",
-    "if ($Failed.Count -gt 0) {",
+    "if ($script:Failed.Count -gt 0) {",
     "  Write-Host 'Failed items:'",
-    "  foreach ($item in $Failed) { Write-Host \"  - $item\" }",
+    "  foreach ($item in $script:Failed) { Write-Host \"  - $item\" }",
     "  exit 1",
     "}",
     "Write-Host 'Done. Open a new terminal before using newly installed commands.'",

@@ -85,5 +85,37 @@ assert.match(codexTelemetryScript, /\[otel\]/);
 assert.match(codexTelemetryScript, /metrics_exporter = %s/);
 assert.match(codexTelemetryScript, /configure_codex_telemetry 'http:\/\/localhost:4317' 'grpc' '' '' 'dev' '' '60000' '5000' 'otlp' 'otlp' 'none' '0' '0' '0' '0' 'off' '' 'otlp' 'none' 'otlp' '1'/);
 
+// --- Regression coverage for the script-defect fixes ---
+
+// Codex telemetry must REPLACE config.toml (>), not append (>>), or re-runs stack [otel] tables.
+assert.match(codexTelemetryScript, /\}\s*>\s*"\$config"/);
+assert.doesNotMatch(codexTelemetryScript, /\}\s*>>\s*"\$config"/);
+
+// Homebrew installer runs non-interactively (no silent RETURN hang).
+const brewScript = buildMacScript(new Set(["homebrew"]), settings);
+assert.match(brewScript, /NONINTERACTIVE=1 \/bin\/bash -c/);
+
+// Python must not trust the /usr/bin/python3 CommandLineTools stub.
+const pythonScript = buildMacScript(resolveSelection(new Set(["python"]), "mac"), settings);
+assert.match(pythonScript, /install_python\(\) \{/);
+assert.match(pythonScript, /\/opt\/homebrew\/bin\/python3/);
+assert.doesNotMatch(pythonScript, /brew_formula "Python"/);
+
+// Telemetry file may hold the OTLP header secret -> owner-only.
+assert.match(claudeTelemetryScript, /chmod 600 "\$telemetry_file"/);
+
+// Git identity writes each field only when that specific field is missing.
+const gitScript = buildMacScript(resolveSelection(new Set(["git-config"]), "mac"), settings);
+assert.match(gitScript, /\[ -z "\$existing_name" \] && git config --global user\.name/);
+assert.match(gitScript, /\[ -z "\$existing_email" \] && git config --global user\.email/);
+
+// CR/LF is stripped from telemetry values (TOML/script-line breakout guard).
+const crlfScript = buildMacScript(resolveSelection(new Set(["claude-code-telemetry"]), "mac"), {
+  ...settings,
+  otelEndpoint: "http://x\nEVIL"
+});
+assert.doesNotMatch(crlfScript, /http:\/\/x\nEVIL/);
+assert.match(crlfScript, /http:\/\/xEVIL/);
+
 assert.equal(selfTest().ok, true);
 console.log("mac tests pass");

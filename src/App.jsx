@@ -170,7 +170,9 @@ const PACKAGE_ICONS = {
 
 const ADVANCED_PACKAGE_IDS = new Set(["claude-code-telemetry", "codex-telemetry"]);
 const PACKAGE_IDS = new Set(PACKAGES.map((item) => item.id));
-const URL_SETTING_KEYS = Object.keys(DEFAULT_SETTINGS);
+// Keep secrets (the OTLP header value is typically an API token) out of the shareable URL.
+const URL_SECRET_KEYS = new Set(["otelHeaderValue"]);
+const URL_SETTING_KEYS = Object.keys(DEFAULT_SETTINGS).filter((key) => !URL_SECRET_KEYS.has(key));
 
 const PERMISSION_HELP = {
   mac: [
@@ -341,7 +343,8 @@ function terminalInstallCommand(os, script) {
   if (os === "mac") {
     return `curl -fsSL '${publicAssetUrl("run-mac.sh")}' | DEV_SETUP_SCRIPT_B64='${encodedScript}' bash`;
   }
-  return `powershell -NoProfile -ExecutionPolicy Bypass -Command "$env:DEV_SETUP_SCRIPT_B64='${encodedScript}'; iex (Invoke-WebRequest -UseBasicParsing '${publicAssetUrl("run-windows.ps1")}').Content"`;
+  // No `$` in the outer command: pasting into PowerShell would otherwise expand $env:DEV_SETUP_SCRIPT_B64 before the child runs. Base64 has no single quotes to escape.
+  return `powershell -NoProfile -ExecutionPolicy Bypass -Command "[Environment]::SetEnvironmentVariable('DEV_SETUP_SCRIPT_B64','${encodedScript}','Process'); iex (Invoke-WebRequest -UseBasicParsing '${publicAssetUrl("run-windows.ps1")}').Content"`;
 }
 
 function groupDomId(group) {

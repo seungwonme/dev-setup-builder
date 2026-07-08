@@ -81,5 +81,36 @@ assert.match(codexTelemetryScript, /\[otel\]/);
 assert.match(codexTelemetryScript, /metrics_exporter = \$metricsExporterToml/);
 assert.match(codexTelemetryScript, /Set-CodexTelemetry 'http:\/\/localhost:4317' 'grpc' '' '' 'dev' '' '60000' '5000' 'otlp' 'otlp' 'none' '0' '0' '0' '0' 'off' '' 'otlp' 'none' 'otlp' '1'/);
 
+// --- Regression coverage for the script-defect fixes ---
+
+// Failure tracking must be $script:-scoped everywhere, or a FAIL is lost and the run reports exit 0.
+assert.match(codexScript, /\$script:Failed = @\(\)/);
+assert.match(codexScript, /if \(\$script:Failed\.Count -gt 0\)/);
+assert.doesNotMatch(codexScript, /\n\$Failed = @\(\)/);
+
+// Codex CLI env var is set in the parent scope, not interpolated away inside the child -Command.
+assert.match(codexScript, /\$env:CODEX_NON_INTERACTIVE = '1'/);
+assert.doesNotMatch(codexScript, /-Command "\$env:CODEX_NON_INTERACTIVE=1;/);
+
+// Polyglot marker is split in the header and matched with IndexOf so a setting value cannot hijack extraction.
+assert.match(codexScript, /\$m='#__PS_SCRIPT'\+'_BELOW__'/);
+assert.match(codexScript, /\$raw\.IndexOf\(\$m\)/);
+assert.doesNotMatch(codexScript, /\.LastIndexOf\(\$m\)/);
+
+// A hostile setting containing the literal marker must not become the first match.
+const marker = "#__PS_SCRIPT_BELOW__";
+const hostileScript = buildWindowsScript(resolveSelection(new Set(["git-config"]), "win"), {
+  gitName: `x${marker}Stop-Computer`,
+  gitEmail: "a@b.c"
+});
+const firstMarker = hostileScript.indexOf(marker);
+assert.equal(hostileScript.slice(0, firstMarker).includes(marker), false);
+assert.match(hostileScript.slice(firstMarker), /^#__PS_SCRIPT_BELOW__\r?\n/);
+
+// Git identity writes each field only when that specific field is missing.
+const gitWinScript = buildWindowsScript(resolveSelection(new Set(["git-config"]), "win"), settings);
+assert.match(gitWinScript, /if \(-not \$existingName\) \{ & git config --global user\.name/);
+assert.match(gitWinScript, /if \(-not \$existingEmail\) \{ & git config --global user\.email/);
+
 assert.equal(selfTest().ok, true);
 console.log("windows tests pass");

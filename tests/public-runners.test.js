@@ -15,6 +15,11 @@ const macContent = readFileSync(macRunner, "utf8");
 assert.match(macContent, /DEV_SETUP_SCRIPT_B64/);
 assert.match(macContent, /base64 -D/);
 assert.match(macContent, /base64 --decode/);
+// Reconnect stdin to the terminal so `curl | bash` can drive interactive installers (sudo prompt).
+assert.match(macContent, /bash "\$tmp" < \/dev\/tty/);
+// Probe openability (ENXIO in CI/cron) instead of a fragile existence check that aborts under set -e.
+assert.match(macContent, /\{ : < \/dev\/tty; \} 2>\/dev\/null/);
+assert.doesNotMatch(macContent, /\[ -e \/dev\/tty \]/);
 
 const windowsContent = readFileSync(windowsRunner, "utf8");
 assert.match(windowsContent, /DEV_SETUP_SCRIPT_B64/);
