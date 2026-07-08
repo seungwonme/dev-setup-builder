@@ -667,7 +667,7 @@ body {
 
 .site-footer {
   display: flex;
-  justify-content: center;
+  justify-content: flex-end;
   padding: 0 18px 18px;
   color: var(--muted);
   font-size: 12px;
@@ -684,6 +684,11 @@ body {
 
 .site-footer a:hover {
   color: var(--ink);
+}
+
+.site-footer svg {
+  width: 18px;
+  height: 18px;
 }
 
 .site-footer a:focus-visible {

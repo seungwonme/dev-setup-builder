@@ -826,9 +826,8 @@ function App() {
         </Card>
       </div>
       <footer className="site-footer">
-        <a href="https://github.com/seungwonme" target="_blank" rel="noreferrer">
+        <a href="https://github.com/ai-native-engineer/dev-setup-builder" target="_blank" rel="noreferrer" aria-label="GitHub 저장소">
           <SiGithub aria-hidden="true" />
-          만든 사람 Aiden
         </a>
       </footer>
     </main>

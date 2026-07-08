@@ -5,6 +5,7 @@
 - Use `pnpm` for this repo.
 - This is a Vite + React app deployed to GitHub Pages.
 - Keep the Vite base path as `/dev-setup-builder/` unless the repository name changes and every dependent path is updated together.
+- Keep `pnpm-workspace.yaml` in sync with CI install policy. The repo keeps pnpm's 24-hour release-age gate and excludes `@astryxdesign/*` because the UI intentionally depends on the current Astryx packages.
 
 ## Source Layout
 
