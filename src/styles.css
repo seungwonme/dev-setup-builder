@@ -82,7 +82,7 @@ body {
   grid-template-columns: minmax(320px, 440px) minmax(0, 1fr);
   align-items: start;
   gap: 18px;
-  padding: 18px max(60px, calc(42px + env(safe-area-inset-right))) 18px 18px;
+  padding: 18px;
   min-height: 0;
 }
 
@@ -758,7 +758,7 @@ body {
 
 @media (max-width: 520px) {
   .builder {
-    padding: 10px max(60px, calc(42px + env(safe-area-inset-right))) 10px 10px;
+    padding: 10px;
   }
 
   .topbar {
