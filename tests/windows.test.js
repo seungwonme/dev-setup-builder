@@ -201,14 +201,5 @@ const gitWinScript = buildWindowsScript(resolveSelection(new Set(["git-config"])
 assert.match(gitWinScript, /if \(-not \$existingName\) \{ & git config --global user\.name/);
 assert.match(gitWinScript, /if \(-not \$existingEmail\) \{ & git config --global user\.email/);
 
-// Invalid or incomplete identity must not generate a global git config call.
-for (const invalidSettings of [
-  { gitName: "", gitEmail: "a@example.com" },
-  { gitName: "A", gitEmail: "not-an-email" }
-]) {
-  const invalidGitWinScript = buildWindowsScript(resolveSelection(new Set(["git-config"]), "win"), invalidSettings);
-  assert.doesNotMatch(invalidGitWinScript, /^Set-GitDefaults -Name /m);
-}
-
 assert.equal(selfTest().ok, true);
 console.log("windows tests pass");

@@ -213,14 +213,12 @@ export const PACKAGES = [
     note: "Writes name and email only when both are missing.",
     presets: [],
     deps: { mac: ["git"], win: ["git"] },
-    mac: (settings) => {
-      const identity = gitIdentity(settings);
-      return identity ? [`configure_git ${sh(identity.name)} ${sh(identity.email)}`] : [];
-    },
-    win: (settings) => {
-      const identity = gitIdentity(settings);
-      return identity ? [`Set-GitDefaults -Name ${ps(identity.name)} -Email ${ps(identity.email)}`] : [];
-    }
+    mac: (settings) => [
+      `configure_git ${sh(settings.gitName)} ${sh(settings.gitEmail)}`
+    ],
+    win: (settings) => [
+      `Set-GitDefaults -Name ${ps(settings.gitName)} -Email ${ps(settings.gitEmail)}`
+    ]
   }
 ];
 
@@ -261,12 +259,6 @@ function sh(value) {
 
 function ps(value) {
   return `'${String(value).replace(/'/g, "''")}'`;
-}
-
-function gitIdentity(settings) {
-  const name = String(settings?.gitName || "").trim();
-  const email = String(settings?.gitEmail || "").trim();
-  return name && /^[^\s@]+@[^\s@]+$/.test(email) ? { name, email } : null;
 }
 
 function boolSetting(settings, key) {

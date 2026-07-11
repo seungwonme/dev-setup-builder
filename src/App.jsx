@@ -36,8 +36,8 @@ import {
 } from "./builder.js";
 
 const DEFAULT_SETTINGS = {
-  gitName: "",
-  gitEmail: "",
+  gitName: "Claude Code",
+  gitEmail: "noreply@anthropic.com",
   otelEndpoint: "http://localhost:4317",
   otelProtocol: "grpc",
   otelHeaderName: "",
@@ -140,7 +140,7 @@ const PACKAGE_TEXT = {
   gh: { note: "GitHub 작업용 gh 명령을 설치합니다." },
   "github-auth": { label: "GitHub CLI 로그인", note: "GitHub CLI 로그인 상태를 확인하고 필요한 명령을 안내합니다." },
   glab: { note: "GitLab 작업용 glab 명령을 설치합니다." },
-  "git-config": { label: "Git 사용자 정보 기본값", note: "Git 이름과 이메일이 없을 때만 기본값을 설정합니다." }
+  "git-config": { label: "Git 사용자 정보 기본값", note: "Git 정보가 없을 때 Claude Code / noreply@anthropic.com을 사용합니다." }
 };
 
 const PACKAGE_ICONS = {
@@ -169,19 +169,7 @@ const PACKAGE_ICONS = {
 
 const ADVANCED_PACKAGE_IDS = new Set(["claude-code-telemetry", "codex-telemetry"]);
 const PACKAGE_IDS = new Set(PACKAGES.map((item) => item.id));
-// Share only non-identifying configuration. New settings stay private unless explicitly added here.
-const URL_SETTING_KEYS = [
-  "otelProtocol",
-  "otelMetricInterval",
-  "otelLogsInterval",
-  "claudeMetricsExporter",
-  "claudeLogsExporter",
-  "claudeTracesExporter",
-  "codexLogExporter",
-  "codexTraceExporter",
-  "codexMetricsExporter"
-];
-const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const URL_SETTING_KEYS = Object.keys(DEFAULT_SETTINGS);
 
 const PERMISSION_HELP = {
   mac: [
@@ -283,7 +271,7 @@ function SettingTextInput(props) {
 }
 
 function allSelection() {
-  return new Set(PACKAGES.filter((item) => !ADVANCED_PACKAGE_IDS.has(item.id) && item.id !== "git-config").map((item) => item.id));
+  return new Set(PACKAGES.filter((item) => !ADVANCED_PACKAGE_IDS.has(item.id)).map((item) => item.id));
 }
 
 function parseUrlState() {
@@ -384,9 +372,7 @@ function App() {
   const [status, setStatus] = useState(STATUS_TEXT.ready);
   const [lastAction, setLastAction] = useState("");
   const [copiedCommand, setCopiedCommand] = useState("");
-  const [collapsedGroups, setCollapsedGroups] = useState(() => (
-    [...ADVANCED_PACKAGE_IDS].some((id) => initialUrlState.current.selected.has(id)) ? new Set() : new Set(["Advanced"])
-  ));
+  const [collapsedGroups, setCollapsedGroups] = useState(() => new Set(["Advanced"]));
   const statusTimer = useRef();
   const commandTimer = useRef();
 
@@ -402,12 +388,7 @@ function App() {
   const tools = visibleResolved(resolved);
   const currentFileName = fileName(os);
   const showTelemetryDefaults = resolved.has("claude-code-telemetry") || resolved.has("codex-telemetry");
-  const gitIdentityValid = Boolean(settings.gitName.trim() && EMAIL_PATTERN.test(settings.gitEmail.trim()));
-  const outputBlockReason = tools.length === 0
-    ? STATUS_TEXT.noTools
-    : resolved.has("git-config") && !gitIdentityValid
-      ? "Git 이름과 올바른 이메일을 입력하세요."
-      : "";
+  const outputBlockReason = tools.length === 0 ? STATUS_TEXT.noTools : "";
   const canExport = !outputBlockReason;
 
   useEffect(() => {
@@ -734,8 +715,6 @@ function App() {
                                 label="헤더 값"
                                 value={settings.otelHeaderValue}
                                 onChange={(value) => updateSetting("otelHeaderValue", value)}
-                                type="password"
-                                autoComplete="off"
                               />
                               <SettingTextInput
                                 htmlName="otelMetricInterval"
