@@ -1,6 +1,5 @@
 #!/bin/bash
 set -euo pipefail
-umask 077
 
 if [ -z "${DEV_SETUP_SCRIPT_B64:-}" ]; then
   printf "DEV_SETUP_SCRIPT_B64 is missing.\n" >&2

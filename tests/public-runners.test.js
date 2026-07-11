@@ -17,7 +17,7 @@ const macContent = readFileSync(macRunner, "utf8");
 assert.match(macContent, /DEV_SETUP_SCRIPT_B64/);
 assert.match(macContent, /base64 -D/);
 assert.match(macContent, /base64 --decode/);
-assert.match(macContent, /^umask 077$/m);
+assert.doesNotMatch(macContent, /^umask 077$/m);
 assert.match(macContent, /mktemp/);
 assert.match(macContent, /trap cleanup EXIT/);
 assert.doesNotMatch(macContent, /\$\$/);
@@ -54,9 +54,11 @@ function runFixture(command, args, fixture) {
   return { files, result };
 }
 
-const macFixture = runFixture("bash", [macRunner], '#!/bin/bash\nprintf "runner fixture ok\\n"\nexit 7\n');
+const expectedUmask = process.umask().toString(8).padStart(4, "0");
+const macFixture = runFixture("bash", [macRunner], '#!/bin/bash\nprintf "runner fixture ok\\n"\numask\nexit 7\n');
 assert.equal(macFixture.result.status, 7, macFixture.result.stderr || macFixture.result.stdout);
 assert.match(macFixture.result.stdout, /runner fixture ok/);
+assert.match(macFixture.result.stdout, new RegExp(`^${expectedUmask}$`, "m"));
 assert.deepEqual(macFixture.files, []);
 
 const powerShell = process.platform === "win32" ? "powershell.exe" : "pwsh";

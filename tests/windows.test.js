@@ -70,10 +70,21 @@ const commandDetector = pythonScript.slice(
   pythonScript.indexOf("function Has-Command"),
   pythonScript.indexOf("function Refresh-Path")
 );
+const wingetInstaller = pythonScript.slice(
+  pythonScript.indexOf("function Install-Winget"),
+  pythonScript.indexOf("function Install-NpmGlobal")
+);
+const pythonBodyStart = pythonScript.lastIndexOf("$pythonOk = $false");
+const pythonBody = pythonScript.slice(
+  pythonBodyStart,
+  pythonScript.indexOf('\r\n\r\nWrite-Host ""', pythonBodyStart)
+);
 assert.match(commandDetector, /Get-Command \$Name -All/);
-assert.match(commandDetector, /WindowsApps/);
+assert.doesNotMatch(commandDetector, /WindowsApps/);
 assert.match(commandDetector, /Test-Path \$command\.Source -PathType Leaf/);
 assert.match(commandDetector, /--version/);
+assert.match(pythonBody, /-DeferFailure/);
+assert.match(pythonBody, /if \(-not \$pythonOk\) \{ Fail 'Python' \}/);
 
 const claudeTelemetry = resolveSelection(new Set(["claude-code-telemetry"]), "win");
 const claudeTelemetryScript = buildWindowsScript(claudeTelemetry, {
@@ -120,6 +131,29 @@ if (!pwsh.error && pwsh.status === 0) {
     encoding: "utf8"
   });
   assert.equal(pythonCheck.status, 0, pythonCheck.stderr || pythonCheck.stdout);
+
+  const pythonFallbackCheck = spawnSync("pwsh", ["-NoProfile", "-NonInteractive", "-Command", "-"], {
+    input: [
+      "$script:Failed = @()",
+      "$script:Attempts = 0",
+      "$script:PythonInstalled = $false",
+      "$LogFile = [IO.Path]::GetTempFileName()",
+      "function Step([string]$Text) {}",
+      "function Ok([string]$Text) {}",
+      "function Fail([string]$Text) { $script:Failed += $Text }",
+      "function Refresh-Path {}",
+      "function Has-Command([string]$Name) { if ($Name -eq 'winget') { return $true }; if ($Name -eq 'python') { return $script:PythonInstalled }; return $false }",
+      "function winget { $script:Attempts += 1; if ($script:Attempts -eq 2) { $script:PythonInstalled = $true } }",
+      wingetInstaller,
+      pythonBody,
+      "Remove-Item $LogFile -Force",
+      "if (-not $pythonOk) { exit 1 }",
+      "if ($script:Failed.Count -ne 0) { exit 2 }",
+      "if ($script:Attempts -ne 2) { exit 3 }"
+    ].join("\n"),
+    encoding: "utf8"
+  });
+  assert.equal(pythonFallbackCheck.status, 0, pythonFallbackCheck.stderr || pythonFallbackCheck.stdout);
 
   const helpers = codexTelemetryScript.slice(
     codexTelemetryScript.indexOf("function ConvertTo-TomlString"),
